@@ -34,10 +34,11 @@ const CarDetails: React.FC = () => {
     history.push(`/dashboard${params}`);
   };
 
+
   return (
     <IonPage>
-      <IonContent>
-        <div className="min-h-screen bg-gradient-dark flex items-center justify-center px-6 py-12 relative overflow-hidden">
+      <IonContent scrollY={true}>
+        <div className="min-h-screen bg-gradient-dark flex items-center justify-center px-6 py-12 relative">
           <div className="absolute top-0 right-1/3 w-80 h-80 bg-brand-700 opacity-10 rounded-full blur-3xl pointer-events-none" />
 
           <div className="w-full max-w-md animate-in">

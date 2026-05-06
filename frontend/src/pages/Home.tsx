@@ -19,8 +19,8 @@ const Home: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent scrollY={false}>
-        <div className="min-h-screen bg-gradient-dark flex flex-col items-center justify-center px-6 py-16 relative overflow-hidden">
+      <IonContent scrollY={true}>
+        <div className="min-h-screen bg-gradient-dark flex flex-col items-center justify-center px-6 py-16 relative">
           {/* Glow blobs */}
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-700 opacity-10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-12 right-1/5 w-72 h-72 bg-purple-700 opacity-10 rounded-full blur-3xl pointer-events-none" />

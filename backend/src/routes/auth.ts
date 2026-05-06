@@ -95,12 +95,12 @@ router.post("/login", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check role match (optional based on your frontend logic, but good for validation)
-    // Note: If you want cross-role login, you can skip this
-    const assignedRole = role || user.role || "driver";
+    // Always use the role stored in the database — ignore what the frontend tab says.
+    // This prevents login failure when a user picks the wrong tab.
+    const assignedRole = user.role || "driver";
 
     const redirect = assignedRole === "owner" ? "/myprofile" : "/cardetails";
-    res.json({ success: true, role: assignedRole, redirect, user: { id: user.id, name: user.name, email: user.email } });
+    res.json({ success: true, role: assignedRole, redirect, user: { id: user.id, name: user.name, email: user.email, phone: user.phone, address: user.address } });
   } catch (err) {
     console.error("Login exception:", err);
     res.status(500).json({ message: "Server error" });

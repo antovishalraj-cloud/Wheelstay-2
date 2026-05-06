@@ -42,7 +42,7 @@ const MyProfile: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent>
+      <IonContent scrollY={true}>
         <div className="min-h-screen bg-dark-900">
           {/* Header */}
           <header className="sticky top-0 z-20 bg-dark-800/90 backdrop-blur-xl border-b border-white/5">

@@ -16,6 +16,17 @@
 /* ── Base Reset ─────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
+/* ── Ionic Scroll Fix ───────────────────────────── */
+/* Force IonContent to always scroll on every page  */
+ion-content {
+  --overflow: auto;
+}
+ion-content::part(scroll) {
+  overflow-y: auto !important;
+  overflow-x: hidden;
+}
+
+
 body {
   font-family: 'Inter', system-ui, sans-serif;
   background: #0b0f1a;
