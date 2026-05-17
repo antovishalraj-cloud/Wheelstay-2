@@ -7,6 +7,7 @@ export interface ParkingSpace {
   lat: number;
   lng: number;
   price: number;
+  price_type?: string;
   type: string;
   image: string;
   owner?: {
@@ -14,6 +15,8 @@ export interface ParkingSpace {
     phone: string;
     email: string;
   };
+  amenities?: string[];
+  security?: string[];
 }
 
 export interface SpaceOwner {
@@ -51,6 +54,7 @@ export interface AuthResponse {
     email: string;
     phone?: string;
     address?: string;
+    avatar_url?: string;
   };
 }
 
@@ -106,3 +110,26 @@ export const addSpace = (payload: Partial<ParkingSpace> & { owner_id: number; de
 
 export const getMySpaces = (ownerId: number): Promise<ParkingSpace[]> =>
   request<ParkingSpace[]>(`/spaces/my-spaces/${ownerId}`);
+
+export const uploadImage = (imageBase64: string): Promise<{ success: boolean; url: string }> =>
+  request<{ success: boolean; url: string }>("/upload", {
+    method: "POST",
+    body: JSON.stringify({ imageBase64 }),
+  });
+
+export const updateProfile = (id: number, data: { avatar_url: string }): Promise<{ success: boolean }> =>
+  request<{ success: boolean }>(`/auth/profile/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+export const getOwnerBookings = (ownerId: number): Promise<{ bookings: any[] }> =>
+  request<{ bookings: any[] }>(`/bookings/owner/${ownerId}`);
+
+export const getDriverBookings = (email: string): Promise<{ bookings: any[] }> =>
+  request<{ bookings: any[] }>(`/bookings/driver/${encodeURIComponent(email)}`);
+
+export const deleteSpace = (id: number): Promise<{ success: boolean }> =>
+  request<{ success: boolean }>(`/spaces/${id}`, {
+    method: "DELETE",
+  });

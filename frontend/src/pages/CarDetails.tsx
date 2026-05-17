@@ -30,7 +30,10 @@ const CarDetails: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const params = location ? `?lat=${location.lat}&lng=${location.lng}` : "";
+    let params = `?duration=${duration}`;
+    if (location) {
+      params += `&lat=${location.lat}&lng=${location.lng}`;
+    }
     history.push(`/dashboard${params}`);
   };
 

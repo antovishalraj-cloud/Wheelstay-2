@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useHistory, useParams } from "react-router-dom";
 import { IonPage, IonContent } from "@ionic/react";
+import { createBooking, getSpaceById } from "../services/api";
 
 const Payment: React.FC = () => {
   const { id, hours, amount } = useParams<{ id: string; hours: string; amount: string }>();
@@ -10,15 +11,40 @@ const Payment: React.FC = () => {
   const [cardDetails, setCardDetails] = useState({ number: "", expiry: "", cvv: "" });
   const [upiId, setUpiId] = useState("");
 
+  const baseAmount = parseInt(amount || "0", 10);
+  const platformFee = Math.round(baseAmount * 0.1);
+  const totalAmount = baseAmount + platformFee;
+
   const handlePayment = async () => {
     if (!method) return;
     setProcessing(true);
     
-    // Simulate payment processing
-    setTimeout(() => {
+    try {
+      // Get driver email from localStorage
+      const userStr = localStorage.getItem("user");
+      const user = userStr ? JSON.parse(userStr) : null;
+      const driverEmail = user?.email || "unknown@wheelstay.com";
+
+      // Get space details to know the price_type (hourly/daily/monthly)
+      const spaceData = await getSpaceById(parseInt(id, 10));
+      const priceType = spaceData.space.price_type || 'hourly';
+      const unit = priceType === 'monthly' ? (hours === '1' ? 'month' : 'months') : priceType === 'daily' ? (hours === '1' ? 'day' : 'days') : (hours === '1' ? 'hour' : 'hours');
+      const durationStr = `${hours} ${unit}`;
+
+      // Create booking in the database (this also marks the space as unavailable)
+      await createBooking({
+        spaceId: parseInt(id, 10),
+        duration: durationStr,
+        driverEmail,
+      });
+
       setProcessing(false);
       history.push(`/payment-success/${id}/${hours}/${amount}`);
-    }, 2000);
+    } catch (err) {
+      console.error("Booking creation failed:", err);
+      setProcessing(false);
+      alert("Payment failed. Please try again.");
+    }
   };
 
   return (
@@ -40,9 +66,19 @@ const Payment: React.FC = () => {
 
             {/* Amount Summary */}
             <div className="glass rounded-3xl p-8 mb-8">
+              <div className="space-y-4 mb-6 pb-6 border-b border-white/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 font-medium">Subtotal</span>
+                  <span className="font-bold text-white">₹{baseAmount}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 font-medium">Platform Fee (10%)</span>
+                  <span className="font-bold text-white">₹{platformFee}</span>
+                </div>
+              </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 font-medium text-lg">Total Amount</span>
-                <span className="font-black text-brand-400 text-4xl">₹{amount}</span>
+                <span className="font-black text-brand-400 text-4xl">₹{totalAmount}</span>
               </div>
             </div>
 
@@ -195,7 +231,7 @@ const Payment: React.FC = () => {
                   Processing Payment…
                 </>
               ) : (
-                `💳 Pay ₹${amount}`
+                `💳 Pay ₹${totalAmount}`
               )}
             </button>
 

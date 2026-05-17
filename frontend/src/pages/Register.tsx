@@ -68,9 +68,7 @@ const Register: React.FC = () => {
               <div className="w-full max-w-md animate-in">
                 {/* Header */}
                 <div className="text-center mb-7">
-                  <div className="w-14 h-14 bg-gradient-brand rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-glow">
-                    <span className="text-2xl">🅿️</span>
-                  </div>
+                  <img src="/logo.png" alt="Wheelstay" className="w-16 h-16 mx-auto mb-4 rounded-2xl shadow-glow object-cover" />
                   <h1 className="font-display text-3xl font-extrabold gradient-text">Create Account</h1>
                   <p className="text-dark-500 text-sm mt-1">Join the Wheelstay community</p>
                 </div>

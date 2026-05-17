@@ -82,8 +82,9 @@ const SpaceDetails: React.FC = () => {
                     {[
                       ["Type",          space.type],
                       ["Accessibility", "24/7 Access"],
-                      ["Security",      "CCTV Monitored"],
-                      ["Facilities",    "Well-lit, CCTV, Gated"],
+                      ["Security",      space.security && space.security.length > 0 ? space.security.join(", ") : "CCTV Monitored"],
+                      ["Facilities",    space.amenities && space.amenities.length > 0 ? space.amenities.filter(a => a !== "EV charging").join(", ") || "None specified" : "Well-lit, CCTV, Gated"],
+                      ["EV Charging",   space.amenities && space.amenities.includes("EV charging") ? "Available" : "Not Available"],
                     ].map(([l, v]) => (
                       <div key={l} className="flex items-center justify-between py-4 border-t border-white/8 first:border-0 first:pt-0">
                         <span className="text-slate-400 font-medium text-base">{l}</span>

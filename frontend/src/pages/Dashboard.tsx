@@ -26,6 +26,7 @@ const Dashboard: React.FC = () => {
   const [selectedParkingType, setSelectedParkingType] = useState("Any type");
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [selectedSecurity, setSelectedSecurity] = useState<string[]>([]);
+  const [activeDuration, setActiveDuration] = useState(params.get("duration") || "hourly");
 
   const [spaces, setSpaces] = useState<ParkingSpace[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +43,41 @@ const Dashboard: React.FC = () => {
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); fetchSpaces(search); };
 
+  const filteredSpaces = spaces.filter(space => {
+    const spacePriceType = space.price_type || 'hourly';
+    
+    if (spacePriceType !== activeDuration) return false;
+    
+    if (minPrice && space.price < Number(minPrice)) return false;
+    if (maxPrice && space.price > Number(maxPrice)) return false;
+    if (selectedParkingType !== "Any type" && space.type !== selectedParkingType) return false;
+    
+    // Feature & Amenities filtering (Combined since they overlap in UI, e.g. EV charging)
+    const combinedFilterAmenities = [...new Set([...selectedFeatures, ...selectedAmenities])];
+    if (combinedFilterAmenities.length > 0) {
+      const spaceAmenities = space.amenities || [];
+      // If the filter has any amenity selected, the space MUST have at least those amenities
+      // Or if we want strict match: 
+      for (const reqAmenity of combinedFilterAmenities) {
+        if (!spaceAmenities.includes(reqAmenity)) {
+          return false;
+        }
+      }
+    }
+
+    // Security filtering
+    if (selectedSecurity.length > 0) {
+      const spaceSecurity = space.security || [];
+      for (const reqSec of selectedSecurity) {
+        if (!spaceSecurity.includes(reqSec)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  });
+
   return (
     <IonPage>
       <IonContent scrollY={true}>
@@ -49,9 +85,12 @@ const Dashboard: React.FC = () => {
           {/* Top Bar */}
           <header className="sticky top-0 z-20 bg-dark-800/90 backdrop-blur-xl border-b border-white/5">
             <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-              <div>
-                <h1 className="font-display text-2xl font-black gradient-text">Wheelstay</h1>
-                <p className="text-xs text-slate-500 mt-0.5">Find your perfect parking spot</p>
+              <div className="flex items-center gap-3">
+                <img src="/logo.png" alt="Wheelstay" className="w-10 h-10 rounded-xl object-cover" />
+                <div>
+                  <h1 className="font-display text-xl font-black gradient-text">Wheelstay</h1>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Park Smarter, Not Harder</p>
+                </div>
               </div>
               <button
                 onClick={() => setShowMenu(true)}
@@ -66,7 +105,7 @@ const Dashboard: React.FC = () => {
 
           <main className="max-w-6xl mx-auto px-6 py-10">
             {/* Search */}
-            <form onSubmit={handleSearch} className="flex gap-4 mb-10 animate-in items-center">
+            <form onSubmit={handleSearch} className="flex gap-4 mb-5 animate-in items-center">
               <div className="relative flex-1">
                 <svg
                   className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"
@@ -93,8 +132,33 @@ const Dashboard: React.FC = () => {
               </button>
             </form>
 
-            {/* Divider spacing before results */}
-            <div className="mb-6" />
+            {/* Duration Tabs */}
+            <div className="glass rounded-2xl p-1.5 flex mb-8 animate-in relative">
+              {/* Sliding background pill */}
+              <div
+                className="absolute top-1.5 bottom-1.5 bg-gradient-brand rounded-xl shadow-glow-sm transition-all duration-300 ease-out"
+                style={{
+                  width: 'calc(33.333% - 4px)',
+                  left: activeDuration === 'hourly' ? '6px'
+                      : activeDuration === 'daily' ? 'calc(33.333% + 2px)'
+                      : 'calc(66.666% - 2px)',
+                }}
+              />
+              {[
+                { value: "hourly",  label: "Hourly",  icon: "⏱️" },
+                { value: "daily",   label: "Daily",   icon: "📅" },
+                { value: "monthly", label: "Monthly", icon: "📆" },
+              ].map(({ value, label, icon }) => (
+                <button key={value} onClick={() => setActiveDuration(value)}
+                  className={`flex-1 py-3.5 rounded-xl text-sm font-bold transition-colors duration-300 relative z-10 flex items-center justify-center gap-2 ${
+                    activeDuration === value ? "text-white" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <span className="text-base">{icon}</span>
+                  {label}
+                </button>
+              ))}
+            </div>
 
             {/* Loading */}
             {loading && (
@@ -114,14 +178,14 @@ const Dashboard: React.FC = () => {
             {/* Cards */}
             {!loading && !error && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in">
-                {spaces.length === 0 ? (
+                {filteredSpaces.length === 0 ? (
                   <div className="col-span-full text-center py-24 glass rounded-3xl">
                     <span className="text-5xl block mb-4">🔍</span>
                     <p className="text-slate-300 font-bold text-lg">No parking spaces found.</p>
-                    <p className="text-slate-500 text-base mt-2">Try a different search term.</p>
+                    <p className="text-slate-500 text-base mt-2">Try adjusting your filters or search term.</p>
                   </div>
                 ) : (
-                  spaces.map((space) => (
+                  filteredSpaces.map((space) => (
                     <div key={space.id}
                       className="glass rounded-3xl overflow-hidden card-lift group cursor-pointer hover:shadow-glow-sm transition-all"
                       onClick={() => history.push(`/spacedetails/${space.id}`)}
@@ -155,7 +219,7 @@ const Dashboard: React.FC = () => {
                         <div className="flex items-center justify-between pt-5 border-t border-white/8">
                           <div>
                             <span className="text-2xl font-black text-white">₹{space.price}</span>
-                            <span className="text-sm text-slate-500 ml-1 font-medium">/hr</span>
+                            <span className="text-sm text-slate-500 ml-1 font-medium">/{space.price_type === 'daily' ? 'day' : space.price_type === 'monthly' ? 'mo' : 'hr'}</span>
                           </div>
                           <button
                             onClick={(e) => { e.stopPropagation(); history.push(`/spacedetails/${space.id}`); }}
@@ -372,25 +436,16 @@ const Dashboard: React.FC = () => {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                <button onClick={() => history.push("/booking")} className="w-full flex items-center gap-4 p-4 rounded-xl glass hover:bg-white/5 transition-colors text-left border border-white/5 group">
+                <button onClick={() => history.push("/my-bookings")} className="w-full flex items-center gap-4 p-4 rounded-xl glass hover:bg-white/5 transition-colors text-left border border-white/5 group">
                   <div className="w-12 h-12 rounded-xl bg-brand-500/10 text-brand-400 flex items-center justify-center group-hover:bg-brand-500/20 transition-colors">
                     <span className="text-xl">📅</span>
                   </div>
                   <div>
-                    <div className="text-base font-bold text-white mb-0.5">Current booking</div>
-                    <div className="text-xs text-slate-400">View your active parking</div>
+                    <div className="text-base font-bold text-white mb-0.5">My Bookings</div>
+                    <div className="text-xs text-slate-400">View your receipts and active parking</div>
                   </div>
                 </button>
-                <button onClick={() => history.push("/myprofile")} className="w-full flex items-center gap-4 p-4 rounded-xl glass hover:bg-white/5 transition-colors text-left border border-white/5 group">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
-                    <span className="text-xl">🕒</span>
-                  </div>
-                  <div>
-                    <div className="text-base font-bold text-white mb-0.5">History of bookings</div>
-                    <div className="text-xs text-slate-400">Past parking records</div>
-                  </div>
-                </button>
-                <button onClick={() => history.push("/myprofile")} className="w-full flex items-center gap-4 p-4 rounded-xl glass hover:bg-white/5 transition-colors text-left border border-white/5 group">
+                <button onClick={() => history.push("/driver-profile")} className="w-full flex items-center gap-4 p-4 rounded-xl glass hover:bg-white/5 transition-colors text-left border border-white/5 group">
                   <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
                     <span className="text-xl">👤</span>
                   </div>

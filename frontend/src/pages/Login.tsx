@@ -43,9 +43,7 @@ const Login: React.FC = () => {
           <div className="w-full max-w-md animate-in">
             {/* Header */}
             <div className="text-center mb-10">
-              <div className="w-16 h-16 bg-gradient-brand rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-glow text-4xl">
-                🅿️
-              </div>
+              <img src="/logo.png" alt="Wheelstay" className="w-20 h-20 mx-auto mb-6 rounded-2xl shadow-glow object-cover" />
               <h1 className="font-display text-4xl font-black gradient-text mb-3">Welcome Back</h1>
               <p className="text-slate-400 text-base">Sign in to your Wheelstay account</p>
             </div>

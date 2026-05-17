@@ -40,7 +40,9 @@ const Booking: React.FC = () => {
   );
 
   const { space, owner } = data;
-  const totalPrice = space.price * hours;
+  const subtotal = space.price * hours;
+  const platformFee = Math.round(subtotal * 0.1);
+  const totalPrice = subtotal + platformFee;
 
   return (
     <IonPage>
@@ -117,7 +119,7 @@ const Booking: React.FC = () => {
                   </h2>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 font-medium">Hours</span>
+                      <span className="text-slate-400 font-medium">{space.price_type === 'monthly' ? 'Months' : space.price_type === 'daily' ? 'Days' : 'Hours'}</span>
                       <div className="flex items-center gap-3">
                         <button onClick={() => hours > 1 && setHours(hours - 1)}
                           className="w-12 h-12 rounded-xl bg-slate-700 text-white text-xl font-bold hover:bg-slate-600 transition-all hover:scale-105">
@@ -143,19 +145,19 @@ const Booking: React.FC = () => {
                   <div className="space-y-5 mb-8">
                     <div className="flex items-center justify-between py-3 border-b border-white/8">
                       <span className="text-slate-400 font-medium">Rate</span>
-                      <span className="font-bold text-white">₹{space.price}/hr</span>
+                      <span className="font-bold text-white">₹{space.price}/{space.price_type === 'daily' ? 'day' : space.price_type === 'monthly' ? 'mo' : 'hr'}</span>
                     </div>
                     <div className="flex items-center justify-between py-3 border-b border-white/8">
-                      <span className="text-slate-400 font-medium">Hours</span>
+                      <span className="text-slate-400 font-medium">{space.price_type === 'monthly' ? 'Months' : space.price_type === 'daily' ? 'Days' : 'Hours'}</span>
                       <span className="font-bold text-white">{hours}</span>
                     </div>
                     <div className="flex items-center justify-between py-3 border-b border-white/8">
                       <span className="text-slate-400 font-medium">Subtotal</span>
-                      <span className="font-bold text-white">₹{totalPrice}</span>
+                      <span className="font-bold text-white">₹{subtotal}</span>
                     </div>
                     <div className="flex items-center justify-between py-3">
-                      <span className="text-slate-400 font-medium">Platform Fee</span>
-                      <span className="font-bold text-white">Free</span>
+                      <span className="text-slate-400 font-medium">Platform Fee (10%)</span>
+                      <span className="font-bold text-white">₹{platformFee}</span>
                     </div>
                     <div className="flex items-center justify-between py-4 border-t border-white/8 pt-4">
                       <span className="text-slate-200 font-bold text-lg">Total</span>
@@ -163,7 +165,7 @@ const Booking: React.FC = () => {
                     </div>
                   </div>
 
-                  <button onClick={() => history.push(`/payment/${space.id}/${hours}/${totalPrice}`)}
+                  <button onClick={() => history.push(`/payment/${space.id}/${hours}/${subtotal}`)}
                     className="btn-primary w-full text-base py-5"
                   >
                     💳 Pay Now

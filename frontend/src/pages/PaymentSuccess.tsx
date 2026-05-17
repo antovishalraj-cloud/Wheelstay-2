@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useHistory, useParams } from "react-router-dom";
 import { IonPage, IonContent } from "@ionic/react";
 import { getSpaceById, ParkingSpace, SpaceOwner } from "../services/api";
+import jsPDF from "jspdf";
 
 const PaymentSuccess: React.FC = () => {
   const { id, hours, amount } = useParams<{ id: string; hours: string; amount: string }>();
@@ -32,6 +33,131 @@ const PaymentSuccess: React.FC = () => {
   const bookingDate = new Date().toLocaleDateString();
   const bookingTime = new Date().toLocaleTimeString();
 
+  const baseAmount = parseInt(amount, 10);
+  const platformFee = Math.round(baseAmount * 0.1);
+  const totalAmount = baseAmount + platformFee;
+
+  const downloadPDF = () => {
+    try {
+      const userStr = localStorage.getItem("user");
+      const user = userStr ? JSON.parse(userStr) : null;
+      const buyerName = user?.name || "Valued Customer";
+      const buyerPhone = user?.phone || "N/A";
+      const buyerAddress = user?.address || "Chennai, Tamil Nadu";
+
+      const durationStr = `${hours} ${space?.price_type === 'monthly' ? (hours === '1' ? 'month' : 'months') : space?.price_type === 'daily' ? (hours === '1' ? 'day' : 'days') : (hours === '1' ? 'hour' : 'hours')}`;
+      const rateStr = `Rs. ${space?.price || 0} / ${space?.price_type === 'daily' ? 'day' : space?.price_type === 'monthly' ? 'month' : 'hr'}`;
+
+      const generatePdfDoc = (imgElem: HTMLImageElement | null) => {
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        
+        if (imgElem) {
+          pdf.addImage(imgElem, 'PNG', 20, 15, 25, 25);
+        }
+        
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(22);
+        pdf.setTextColor(40, 40, 40);
+        pdf.text("PARKING RECEIPT", 190, 25, { align: "right" });
+        
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(100, 100, 100);
+        pdf.text("Wheelstay Booking Confirmation", 190, 32, { align: "right" });
+        
+        pdf.setDrawColor(200, 200, 200);
+        pdf.line(20, 45, 190, 45);
+        
+        // Company & Buyer Info
+        pdf.setFontSize(11);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(40, 40, 40);
+        pdf.text("Wheelstay Technologies", 20, 53);
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "normal");
+        pdf.text("No 10 Indhira Gandhi St, Chitlapakam,", 20, 59);
+        pdf.text("Chennai 600064", 20, 65);
+        pdf.text("Phone: 9841161629", 20, 71);
+
+        pdf.setFontSize(11);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Billed To (Buyer):", 110, 53);
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(`Name: ${buyerName}`, 110, 59);
+        pdf.text(`Phone: ${buyerPhone}`, 110, 65);
+        const splitBuyerAddr = pdf.splitTextToSize(`Address: ${buyerAddress}`, 80);
+        pdf.text(splitBuyerAddr, 110, 71);
+
+        let curY = 71 + (splitBuyerAddr.length * 6) + 6;
+        pdf.line(20, curY, 190, curY);
+        curY += 8;
+
+        // Booking Info
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Booking Details", 20, curY);
+        curY += 8;
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(`Booking ID:`, 20, curY); pdf.text(bookingId, 60, curY); curY += 6;
+        pdf.text(`Date:`, 20, curY); pdf.text(bookingDate, 60, curY); curY += 6;
+        pdf.text(`Time:`, 20, curY); pdf.text(bookingTime, 60, curY); curY += 8;
+        
+        pdf.line(20, curY, 190, curY);
+        curY += 8;
+        
+        // Space Info
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Space Details", 20, curY);
+        curY += 8;
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(`Name:`, 20, curY); pdf.text(space?.name || "N/A", 60, curY); curY += 6;
+        pdf.text(`Type:`, 20, curY); pdf.text(space?.type || "N/A", 60, curY); curY += 6;
+        pdf.text(`Address:`, 20, curY);
+        const splitAddress = pdf.splitTextToSize(space?.address || "N/A", 120);
+        pdf.text(splitAddress, 60, curY);
+        curY += (splitAddress.length * 6) + 8;
+        
+        pdf.line(20, curY, 190, curY);
+        curY += 8;
+        
+        // Payment Summary
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Payment Summary", 20, curY);
+        curY += 8;
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(`Rate:`, 20, curY); pdf.text(rateStr, 150, curY); curY += 6;
+        pdf.text(`Duration:`, 20, curY); pdf.text(durationStr, 150, curY); curY += 6;
+        pdf.text(`Subtotal:`, 20, curY); pdf.text(`Rs. ${baseAmount}`, 150, curY); curY += 6;
+        pdf.text(`Platform Fee (10%):`, 20, curY); pdf.text(`Rs. ${platformFee}`, 150, curY); curY += 10;
+        
+        pdf.setFontSize(13);
+        pdf.setFont("helvetica", "bold");
+        pdf.text(`Total Paid:`, 20, curY); pdf.text(`Rs. ${totalAmount}`, 150, curY); curY += 25;
+        
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "italic");
+        pdf.setTextColor(150, 150, 150);
+        pdf.text("Thank you for using Wheelstay!", 105, curY, { align: "center" });
+
+        pdf.save(`Receipt-${bookingId}.pdf`);
+      };
+
+      const img = new Image();
+      img.src = '/logo.png';
+      img.onload = () => generatePdfDoc(img);
+      img.onerror = () => generatePdfDoc(null);
+    } catch (err: any) {
+      console.error("PDF generation failed", err);
+      alert(`Failed to generate PDF. Error: ${err?.message || err}`);
+    }
+  };
+
   return (
     <IonPage>
       <IonContent>
@@ -49,9 +175,10 @@ const PaymentSuccess: React.FC = () => {
             </div>
 
             {/* Receipt */}
-            <div className="glass rounded-3xl p-10 space-y-8">
+            <div id="receipt-content" className="glass rounded-3xl p-10 space-y-8 bg-dark-900 text-white">
               {/* Header */}
               <div className="text-center border-b border-white/10 pb-8">
+                <img src="/logo.png" alt="Wheelstay" className="w-16 h-16 mx-auto mb-4 rounded-xl object-cover" />
                 <h2 className="font-display text-2xl font-black text-white mb-2">YOUR RECEIPT</h2>
                 <p className="text-slate-400">Booking Confirmation</p>
               </div>
@@ -129,23 +256,23 @@ const PaymentSuccess: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400 font-medium">Rate</span>
-                    <span className="font-bold text-white">₹{space?.price}/hr</span>
+                    <span className="font-bold text-white">₹{space?.price}/{space?.price_type === 'daily' ? 'day' : space?.price_type === 'monthly' ? 'month' : 'hr'}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400 font-medium">Duration</span>
-                    <span className="font-bold text-white">{hours} hour{hours !== '1' ? 's' : ''}</span>
+                    <span className="font-bold text-white">{hours} {space?.price_type === 'monthly' ? (hours === '1' ? 'month' : 'months') : space?.price_type === 'daily' ? (hours === '1' ? 'day' : 'days') : (hours === '1' ? 'hour' : 'hours')}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400 font-medium">Subtotal</span>
                     <span className="font-bold text-white">₹{amount}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400 font-medium">Platform Fee</span>
-                    <span className="font-bold text-white">₹0</span>
+                    <span className="text-slate-400 font-medium">Platform Fee (10%)</span>
+                    <span className="font-bold text-white">₹{platformFee}</span>
                   </div>
                   <div className="flex items-center justify-between pt-4 border-t border-white/10">
                     <span className="text-white font-bold text-lg">Total Paid</span>
-                    <span className="font-black text-brand-400 text-2xl">₹{amount}</span>
+                    <span className="font-black text-brand-400 text-2xl">₹{totalAmount}</span>
                   </div>
                 </div>
               </div>
@@ -171,10 +298,10 @@ const PaymentSuccess: React.FC = () => {
                 🏠 Back to Dashboard
               </button>
               <button
-                onClick={() => window.print()}
+                onClick={downloadPDF}
                 className="flex-1 btn-outline py-4 text-base"
               >
-                🖨️ Print Receipt
+                📄 Download PDF
               </button>
             </div>
           </div>

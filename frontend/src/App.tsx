@@ -13,6 +13,8 @@ import Payment from './pages/Payment';
 import PaymentSuccess from './pages/PaymentSuccess';
 import BookingDetails from './pages/BookingDetails';
 import CarDetails from './pages/CarDetails';
+import DriverProfile from './pages/DriverProfile';
+import MyBookings from './pages/MyBookings';
 import MyProfile from './pages/MyProfile';
 import AddSpace from './pages/AddSpace';
 
@@ -56,6 +58,8 @@ const App: React.FC = () => (
         <Route exact path="/booking/:id" component={Booking} />
         <Route exact path="/payment/:id/:hours/:amount" component={Payment} />
         <Route exact path="/payment-success/:id/:hours/:amount" component={PaymentSuccess} />
+        <Route exact path="/driver-profile" component={DriverProfile} />
+        <Route exact path="/my-bookings" component={MyBookings} />
 
         {/* Space Owner Flow */}
         <Route exact path="/myprofile" component={MyProfile} />

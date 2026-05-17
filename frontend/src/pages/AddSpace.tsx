@@ -1,15 +1,17 @@
 import React, { useState } from "react";
 import { useHistory } from "react-router-dom";
 import { IonPage, IonContent } from "@ionic/react";
-import { addSpace } from "../services/api";
+import { addSpace, uploadImage } from "../services/api";
 
 
 const AddSpace: React.FC = () => {
   const history = useHistory();
-  const [form, setForm] = useState({ name: "", address: "", price: "", type: "", description: "" });
+  const [form, setForm] = useState({ name: "", address: "", price: "", type: "", description: "", lat: 0, lng: 0, price_type: "hourly" });
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [selectedSecurity, setSelectedSecurity] = useState<string[]>([]);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -17,6 +19,38 @@ const AddSpace: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm({ ...form, [e.target.name]: e.target.value });
+
+  const [gettingLocation, setGettingLocation] = useState(false);
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser.");
+      return;
+    }
+    setGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+          const data = await res.json();
+          const address = data.display_name || `${lat}, ${lng}`;
+          setForm(prev => ({ ...prev, lat, lng, address }));
+        } catch (err) {
+          console.error("Geocoding failed", err);
+          setForm(prev => ({ ...prev, lat, lng }));
+          setError("Got coordinates but failed to fetch street address.");
+        } finally {
+          setGettingLocation(false);
+        }
+      },
+      (error) => {
+        setGettingLocation(false);
+        setError("Failed to get your location. Please check browser permissions.");
+      }
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,13 +67,31 @@ const AddSpace: React.FC = () => {
     
     setLoading(true);
     try {
+      let imageUrl = "";
+      if (selectedImage) {
+        const reader = new FileReader();
+        const base64 = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(selectedImage);
+        });
+        const uploadRes = await uploadImage(base64);
+        imageUrl = uploadRes.url;
+      }
+
       await addSpace({
         name: form.name,
         address: form.address,
         price: Number(form.price),
         type: form.type,
         description: form.description,
-        owner_id: user.id
+        owner_id: user.id,
+        image: imageUrl || undefined,
+        amenities: selectedAmenities,
+        security: selectedSecurity,
+        lat: form.lat || undefined,
+        lng: form.lng || undefined,
+        price_type: form.price_type
       });
       setSuccess(true);
     } catch (err: any) {
@@ -67,10 +119,12 @@ const AddSpace: React.FC = () => {
               <div className="space-y-4">
                 <button onClick={() => { 
                   setSuccess(false); 
-                  setForm({ name:"",address:"",price:"",type:"",description:"" }); 
+                  setForm({ name:"",address:"",price:"",type:"",description:"",lat:0,lng:0,price_type:"hourly" }); 
                   setSelectedVehicles([]);
                   setSelectedAmenities([]);
                   setSelectedSecurity([]);
+                  setSelectedImage(null);
+                  setImagePreview(null);
                 }}
                   className="btn-outline w-full text-base">
                   Add Another Space
@@ -127,8 +181,27 @@ const AddSpace: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-black text-slate-400 mb-3 uppercase tracking-wider">Full Address</label>
-                  <input type="text" name="address" value={form.address} onChange={handleChange}
-                    placeholder="e.g. 12, 1st Avenue, Adyar, Chennai" required className="input-dark text-base" />
+                  <div className="flex flex-col gap-4">
+                    <input type="text" name="address" value={form.address} onChange={handleChange}
+                      placeholder="e.g. 12, 1st Avenue, Adyar, Chennai" required className="input-dark text-base" />
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 h-px bg-white/10"></div>
+                      <span className="text-xs font-black text-slate-500 uppercase tracking-widest">OR</span>
+                      <div className="flex-1 h-px bg-white/10"></div>
+                    </div>
+                    
+                    <button type="button" onClick={handleGetLocation} disabled={gettingLocation}
+                      className="glass border border-brand-500/30 text-brand-400 hover:bg-brand-500/10 py-5 px-8 rounded-2xl text-lg font-bold flex items-center justify-center gap-3 transition-colors shadow-glow-sm hover:shadow-glow"
+                      style={{ minHeight: '3.75rem' }}>
+                      {gettingLocation ? (
+                        <span className="w-6 h-6 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      )}
+                      {gettingLocation ? "Locating..." : "Use Live Location"}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Vehicle Type */}
@@ -178,6 +251,31 @@ const AddSpace: React.FC = () => {
                     rows={4}
                     className="input-dark resize-none text-base"
                   />
+                </div>
+
+                {/* Photo Upload */}
+                <div>
+                  <label className="block text-xs font-black text-slate-400 mb-3 uppercase tracking-wider">Space Photo</label>
+                  <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-slate-600 rounded-2xl bg-dark-800 hover:border-brand-500 hover:bg-brand-500/5 transition-all cursor-pointer overflow-hidden relative">
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setSelectedImage(file);
+                        const reader = new FileReader();
+                        reader.onload = () => setImagePreview(reader.result as string);
+                        reader.readAsDataURL(file);
+                      }
+                    }} />
+                    {imagePreview ? (
+                      <img src={imagePreview} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6 text-slate-400">
+                        <svg className="w-10 h-10 mb-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <p className="mb-2 text-sm font-semibold">Click to upload a photo</p>
+                        <p className="text-xs">PNG, JPG, or WEBP (MAX. 5MB)</p>
+                      </div>
+                    )}
+                  </label>
                 </div>
               </div>
 
@@ -247,7 +345,25 @@ const AddSpace: React.FC = () => {
               {/* Pricing */}
               <div className="glass rounded-3xl p-8">
                 <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-7">Pricing</h2>
-                <label className="block text-xs font-black text-slate-400 mb-3 uppercase tracking-wider">Rate (₹ per hour)</label>
+                
+                {/* Duration Basis */}
+                <div className="mb-6">
+                  <label className="block text-xs font-black text-slate-400 mb-4 uppercase tracking-wider">Parking Duration Basis</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {["hourly", "daily", "monthly"].map(basis => (
+                      <button key={basis} type="button"
+                        onClick={() => setForm({ ...form, price_type: basis })}
+                        className={`py-5 rounded-2xl border text-lg font-bold transition-all capitalize ${form.price_type === basis ? "border-brand-500 bg-brand-500/10 text-brand-400 shadow-glow-sm" : "border-white/10 glass text-slate-400 hover:border-brand-500 hover:bg-brand-500/5 hover:text-slate-200"}`}
+                        style={{ minHeight: '3.75rem' }}>
+                        {basis}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="block text-xs font-black text-slate-400 mb-3 uppercase tracking-wider">
+                  Rate (₹ per {form.price_type === 'hourly' ? 'hour' : form.price_type === 'daily' ? 'day' : 'month'})
+                </label>
                 <div className="relative">
                   <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 text-lg font-bold">₹</span>
                   <input type="number" name="price" value={form.price} onChange={handleChange}
@@ -255,7 +371,9 @@ const AddSpace: React.FC = () => {
                     className="input-dark text-base font-semibold"
                     style={{ paddingLeft: "2.5rem", paddingRight: "4rem" }}
                   />
-                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 text-base font-semibold">/hr</span>
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 text-base font-semibold">
+                    /{form.price_type === 'hourly' ? 'hr' : form.price_type === 'daily' ? 'day' : 'mo'}
+                  </span>
                 </div>
               </div>
 

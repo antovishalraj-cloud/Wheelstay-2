@@ -15,7 +15,7 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
         phone,
         email
       )
-    `);
+    `).eq("is_available", true);
     
     if (search) {
       query = query.or(`name.ilike.%${search}%,address.ilike.%${search}%`);
@@ -115,14 +115,16 @@ router.get("/:id", async (req: Request, res: Response): Promise<void> => {
 // POST /api/spaces - add a new space
 router.post("/", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, address, price, type, owner_id } = req.body;
+    const { name, address, price, type, owner_id, image, amenities, security, lat, lng, price_type } = req.body;
 
     if (!name || !address || !price || !type || !owner_id) {
       res.status(400).json({ message: "Missing required fields." });
       return;
     }
 
-    // Insert space (mocking lat/lng and image for now as AddSpace doesn't provide them)
+    const spaceImage = image || "https://images.unsplash.com/photo-1590674899484-d5640e854abe?auto=format&fit=crop&q=80&w=2000";
+
+    // Insert space (mocking lat/lng)
     const { data: space, error } = await supabase.from("spaces").insert([
       {
         name,
@@ -130,9 +132,12 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
         price: Number(price),
         type,
         owner_id: Number(owner_id),
-        lat: 13.0827, // Mocked lat (Chennai)
-        lng: 80.2707, // Mocked lng (Chennai)
-        image: "https://images.unsplash.com/photo-1590674899484-d5640e854abe?auto=format&fit=crop&q=80&w=2000" // Mock image
+        lat: lat ? Number(lat) : 13.0827, // Use actual or fallback to Chennai
+        lng: lng ? Number(lng) : 80.2707, // Use actual or fallback to Chennai
+        image: spaceImage,
+        amenities: amenities || [],
+        security: security || [],
+        price_type: price_type || 'hourly'
       },
     ]).select().single();
 
@@ -145,6 +150,47 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     res.json({ success: true, space });
   } catch (err) {
     console.error("Add space exception:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// DELETE /api/spaces/:id - remove a space
+router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    
+    if (isNaN(id)) {
+      res.status(400).json({ message: "Invalid space ID" });
+      return;
+    }
+
+    // Delete associated bookings first to avoid foreign key constraints
+    const { error: bookingsError } = await supabase
+      .from("bookings")
+      .delete()
+      .eq("space_id", id);
+      
+    if (bookingsError) {
+      console.error("Delete associated bookings error:", bookingsError);
+      res.status(500).json({ message: "Failed to delete associated bookings." });
+      return;
+    }
+
+    // Delete the space
+    const { error } = await supabase
+      .from("spaces")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error("Delete space error:", error);
+      res.status(500).json({ message: "Failed to delete space." });
+      return;
+    }
+
+    res.json({ success: true, message: "Space deleted successfully." });
+  } catch (err) {
+    console.error("Delete space exception:", err);
     res.status(500).json({ message: "Server error" });
   }
 });

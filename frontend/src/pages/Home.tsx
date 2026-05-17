@@ -27,13 +27,14 @@ const Home: React.FC = () => {
 
           {/* Logo Section */}
           <div className="text-center mb-12 animate-in">
-            <div className="w-20 h-20 bg-gradient-brand rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-glow text-5xl">
-              🅿️
-            </div>
-            <h1 className="font-display text-5xl md:text-6xl font-black gradient-text mb-4 leading-tight">
+            <img src="/logo.png" alt="Wheelstay" className="w-28 h-28 mx-auto mb-6 rounded-2xl shadow-glow object-cover" />
+            <h1 className="font-display text-5xl md:text-6xl font-black gradient-text mb-3 leading-tight">
               Wheelstay
             </h1>
             <p className="text-slate-400 text-lg md:text-xl max-w-md mx-auto leading-relaxed">
+              Park Smarter, Not Harder
+            </p>
+            <p className="text-slate-500 text-sm mt-2 max-w-sm mx-auto">
               Find &amp; rent parking spaces near you — in seconds.
             </p>
           </div>

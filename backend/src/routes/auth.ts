@@ -100,9 +100,38 @@ router.post("/login", async (req: Request, res: Response): Promise<void> => {
     const assignedRole = user.role || "driver";
 
     const redirect = assignedRole === "owner" ? "/myprofile" : "/cardetails";
-    res.json({ success: true, role: assignedRole, redirect, user: { id: user.id, name: user.name, email: user.email, phone: user.phone, address: user.address } });
+    res.json({ success: true, role: assignedRole, redirect, user: { id: user.id, name: user.name, email: user.email, phone: user.phone, address: user.address, avatar_url: user.avatar_url } });
   } catch (err) {
     console.error("Login exception:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// PUT /api/auth/profile/:id
+router.put("/profile/:id", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { avatar_url } = req.body;
+
+    if (isNaN(id)) {
+      res.status(400).json({ message: "Invalid user ID" });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("users")
+      .update({ avatar_url })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Profile update error:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+      return;
+    }
+
+    res.json({ success: true, message: "Profile updated successfully" });
+  } catch (err) {
+    console.error("Profile update exception:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
